@@ -1,0 +1,62 @@
+
+Alright lets do this: Upload the data
+```{r}
+setwd("./Data")
+x<-read.csv("fullSetWithMask.csv",as.is=TRUE, na.strings=c("NA",".",""," "))
+
+## Drop Column of Row Numbers:
+x<-x[,-1]
+
+## Rename a Few Variables:
+colnames(x)[colnames(x)=="taxa_grouped_weight"]<-"taxa"
+colnames(x)[colnames(x)=="agremiacion_fed"]<-"fed"
+colnames(x)[colnames(x)=="coop_edad_10"]<-"age"
+colnames(x)[colnames(x)=="rr"]<-"region" 
+
+x$uniqueid<-as.factor(x$uniqueid) 
+x$fed<-as.factor(x$fed)
+x$taxa<-as.factor(x$taxa) 
+x$region<-as.factor(x$region)
+x$yearFactor<-as.factor(x$year) 
+x$monthFactor<-as.factor(x$month)
+```
+```{r}
+
+```
+
+
+packages
+```{r}
+library(nlme)
+library(tidyverse)
+```
+
+A brief look at the data
+```{r}
+head(x)
+```
+Clients nlme
+```{r}
+keep<-(!is.na(x$logcpue)) 
+lme.out<-nlme::lme(logcpue ~ age + yearFactor + monthFactor + region + taxa,
+                   random = ~ 1|fed/uniqueid, data=x,subset=keep)
+                   
+summary(lme.out)$tTable
+
+acf.lme<-ACF(lme.out,maxLag=15) 
+plot(acf.lme,alpha=0.01/15)
+
+acf.lme<-acf.lme[-1,] 
+plot(acf.lme,alpha=0.005)
+
+qqnorm(fedn.re<-unlist(ranef(lme.out)$fed),las=1)
+abline(a=0,b=sd(fedn.re),lwd=2,col=2)
+
+qqnorm(uid.re<-unlist(ranef(lme.out)$uniqueid))
+abline(a=0,b=sd(uid.re),lwd=2,col=2)
+```
+Suggested changes
+```{r}
+m0 <- gls(logcpue ~ age + yearFactor + monthFactor + region + taxa, na.action = na.omit, correlation = corAR1(form=~1|fed/uniqueid), data = x)
+```
+
